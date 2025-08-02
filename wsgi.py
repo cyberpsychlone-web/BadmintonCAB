@@ -2,7 +2,7 @@
 #   Version Date            Name        Description
 ####################################################################################################################################
 #   1.0     24-Jul-2025     S.K.Sami	WSGI implementation, Name change to the app
-#
+#   1.1     02-Aug-2025     S.K.Sami	Cloud deployment
 #
 #
 #
@@ -21,15 +21,7 @@
 
 
 
-from app import app
+from app import app  # or however you initialize your Flask app
 
-if __name__ == "__main__":
-    import threading, webbrowser
-
-    def open_browser():
-        webbrowser.open("http://127.0.0.1:5000")
-
-    threading.Timer(1.0, open_browser).start()
-
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    app.run()
