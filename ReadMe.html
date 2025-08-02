@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<! Version 1.0>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SSS Badminton CAB</title>
+	<link rel="icon" type="image/png" href="static/icon1.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background-color: #f8f8f8;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 800px;
+            margin: auto;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        section {
+            margin-bottom: 30px;
+        }
+        ol, ul {
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Badminton Court Allocation Board</h1>
+        <section>
+            <h2>📦 Requirements</h2>
+			<h3>Windows Application</h3>
+            <ul>
+				<li>A Standard Web browser (Microsoft Edge or Google Chrome)</li>
+            </ul>
+			<h3>MacOS Application</h3>
+			<ul>
+				<li>A Standard Web browser (Safari or Google Chrome)</li>
+				<li>Python 3.11 virtual environment</li>
+                <li>Flask</li>
+            </ul>
+			<p>Install Flask (if not already installed):</p>
+            <pre><code>pip install flask</code></pre>
+        </section>
+		
+        <section>
+			<h2>🚀 How to Run</h2>
+			<h3>Windows Application</h3>
+			<ol>
+				<li>Double-click <code>BadmintonCAB.exe</code> to launch the Badminton Court Allocation Board.</li>
+				<li>This will:
+					<ul>
+						<li>Start the scheduling app</li>
+						<li>Automatically open your default web browser at <code>http://127.0.0.1:5000</code></li>
+					</ul>
+				</li>
+				<li>Once open, enter player names, court count, match time, and enjoy!</li>
+			</ol>
+			<h3>MacOS Application</h3>
+			<ol>
+                <li>Place all files in the same folder as your Python3.11 venv:
+                    <ul>
+                        <li><code>app.py</code></li>
+						<li><code>BadmintonScheduler_Debug.command</code></li>
+						<li><code>CourtScheduler</code></li>
+                        <li><code>templates/index.html</code></li>
+                        <li><code>static/beep.mp3</code></li>
+						<li><code>static/icon1.png</code></li>
+                        <li><code>readme.html</code> (optional)</li>
+                    </ul>
+                </li>
+				<li>Double-click <code>BadmintonScheduler_Debug.command</code> or its alias in the desktop <code>CourtScheduler</code>to launch the Badminton Scheduler.</li>
+				<li>This will:
+					<ul>
+						<li>Start the scheduling app</li>
+						<li>Automatically open your default web browser at <code>http://127.0.0.1:5000</code></li>
+					</ul>
+				</li>
+				<li>Once open, enter player names, court count, match time, and enjoy!</li>
+			</ol>
+		</section>
+
+
+        <section>
+            <h2>📝 Features</h2>
+            <ul>
+                <li>Assign players randomly to available courts.</li>
+				<li>Pick players from a <code>Players.csv</code> file. </li>
+                <li>Automatic match timer with progress bar.</li>
+                <li>Custom match and break durations.</li>
+				<li>Custom court numbers assignment.</li>
+				<li>Track the number of shuttle corks used during the session.</li>
+                <li>Audible buzzer and "Time’s Up" message.</li>
+                <li>Player rest rotation fairness logic.</li>
+                <li>Match history log saved to <code>match_history_log.csv</code>.</li>
+                <li>Reset button to clear history and memory.</li>
+                <li>Mobile-friendly user interface.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>📁 Match Log File</h2>
+            <p>Each round is recorded in:</p>
+            <pre><code>match_history_log.csv</code></pre>
+            <p>This file contains round number, time, players on each court, resting players, and duration.</p>
+        </section>
+
+        <section>
+            <h2>🙋‍♂️ Questions or Support</h2>
+            <p>For any bugs, improvements, or feature requests, reach out to the developer [Satheesh.Kandasami@outlook.com] or contribute to the future version of this project!</p>
+        </section>
+    </div>
+</body>
+</html>

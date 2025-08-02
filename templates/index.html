@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<! ----
+####################################################################################################################################
+#   Version Date            Name        Description
+####################################################################################################################################
+#   0.0     09-Jul-2025     S.K.Sami    Basic court assignment, match records history store
+#   0.1     12-Jul-2025     S.K.Sami    Timer pause, start fixed, Player reassignment right after match time completion
+#   0.2     13-Jul-2025     S.K.Sami    Player rest fairness improvement, reset history in csv file
+#	0.3		13-Jul-2025		S.K.Sami	Message pop ups style added
+#	0.4		14-Jul-2025		S.K.Sami	Icon added to title, Readme.html updated with distro instructions
+#	0.5		16-Jul-2025		S.K.Sami	Change of Court numbers input from number of courts
+#	0.6		17-Jul-2025		S.K.Sami	Bux fix on twice calling web browser, match history log
+#	0.7		22-Jul-2025		S.K.Sami	New Shuttle-use counter addition
+#	0.8		22-Jul-2025		S.K.Sami	UI addition - all settings popup in a modal from a settings button click
+#	0.9		23-Jul-2025     S.K.Sami	Player names database and selection introduced, log file open with lock warning
+#	1.0     24-Jul-2025     S.K.Sami	WSGI implementation, Name change to the app
+#	1.1		02-Aug-2025		S.K.Sami	Reassign with new players - bug fix
+#
+#
+#
+#
+####################################################################################################################################
+----- >
+<html>
+<head>
+    <title>SSS Badminton Club</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" type="image/png" href="{{ url_for('static', filename='icon1.png') }}">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { background: white; padding: 20px; border-radius: 10px; max-width: 900px; margin: auto; }
+        .court-box, .rest-box {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+        }
+        .court-title { font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .button-group button,
+        .control-button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .button-group button:hover,
+        .control-button:hover {
+            background: #0056b3;
+        }
+
+        .timer-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e53935;
+            margin: 10px 0;
+        }
+
+        .inline-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .inline-input label {
+            margin: 0;
+            min-width: 180px;
+        }
+        .inline-input input {
+			flex: 1;		
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress {
+            height: 100%;
+            width: 0%;
+            background-color: #28a745;
+            transition: width 1s linear;
+        }
+		summary:hover {
+			color: #007bff;
+		}
+		/* Sidebar */
+		.sidebar {
+			height: 100%;
+			width: 0;
+			position: fixed;
+			z-index: 1050;
+			top: 0;
+			right: 0;
+			background-color: white;
+			overflow-x: hidden;
+			transition: 0.4s;
+			border-left: 1px solid #ccc;
+			box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+		}
+		
+		.sidebar-content {
+			padding: 30px 20px;
+			width: 300px;
+		}
+		
+		.sidebar.show {
+			width: 300px;
+		}
+		/* Optional: cleaner modal style if needed */
+		#settings-modal input {
+			width: 100%;
+			padding: 8px;
+			margin-top: 5px;
+		}
+		#player-list {
+			max-height: 300px;
+			overflow-y: auto;
+		}
+		#player-list li {
+			margin: 5px 0;
+		}
+				
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1><center>Badminton Court Allocation Board</center></h1>
+
+	
+
+	<!-- Settings Modal -->
+	<div id="settings-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+		background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+		<div style="background: white; padding: 25px 30px; border-radius: 10px; max-width: 500px; width: 100%;">
+			<h2 style="margin-top: 0;">Match Settings</h2>
+	
+			<div class="inline-input">
+				<label>Players:</label>
+				<input type="text" id="players" placeholder="Satheesh, Stanley, Seeni, ..." value="{{ players|join(', ') }}">
+			</div>
+	
+			<div class="inline-input">
+				<label>Court Numbers:</label>
+				<input type="text" id="court_numbers" placeholder="e.g. 7, 9, 10">
+			</div>
+	
+			<div class="inline-input">
+				<label>Match duration (min):</label>
+				<input type="number" id="match_minutes" value="{{ match_minutes or 10 }}" min="1">
+			</div>
+	
+			<div class="inline-input">
+				<label>Break duration (sec):</label>
+				<input type="number" id="wait_seconds" value="{{ wait_seconds or 20 }}" min="5">
+			</div>
+	
+			<div class="inline-input">
+				<label>Shuttle Corks Used:</label>
+				<input type="number" id="shuttle_count" value="0" min="0" readonly>
+				<button onclick="incrementShuttle()" class="control-button" style="padding: 5px 10px;">➕</button>
+			</div>
+	
+			<div style="text-align: right; margin-top: 20px;">
+				<button onclick="closeSettingsModal()" class="control-button">✅ Save & Close</button>
+			</div>
+		</div>
+	</div>
+	<!-- Players Selection Modal -->
+	<div id="player-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+		background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+		<div style="background: white; padding: 25px; border-radius: 10px; max-width: 400px; width: 90%; max-height: 80vh; overflow: hidden;">
+			<h3>Select Players</h3>
+			<div style="max-height: 300px; overflow-y: auto;" id="player-list-wrapper">
+				<ul id="player-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+			</div>
+			<div style="text-align: right; margin-top: 15px;">
+				<button onclick="applyPlayerSelection()" class="control-button">✅ Confirm</button>
+				<button onclick="closePlayerModal()" class="control-button" style="background-color: #dc3545;">Cancel</button>
+			</div>
+		</div>
+	</div>
+
+
+	
+	<center>						  
+    <div class="button-group">
+		<button type="button" onclick="openPlayerModal()" class="control-button" style="background-color: #28a745;">🎯 Select Players</button>
+        <button type="button" id="assign-btn" class="control-button">Assign Courts</button>
+        <button type="button" id="start-btn">▶️ Start</button>
+        <button type="button" id="pause-btn">⏸ Pause</button>
+        <button type="button" id="reset-btn">🔄 Reset</button>
+		<button type="button" id="reset-history-btn">🧹 Clear History</button>
+		<button onclick="openSettingsModal()" class="control-button" style="background-color: #6c757d;">⚙️ Settings</button>
+    </div>
+	</center>
+    <center><div class="timer-display" id="timer">15:00</div></center>
+    <div class="progress-bar">
+        <div class="progress" id="progress"></div>
+    </div>
+
+    <div id="courts-output">
+        {% if court_assignments %}
+            {% for court in court_assignments %}
+                <div class="court-box">
+                    <div class="court-title">Court {{ loop.index }}</div>
+                    <ul>
+                        {% for player in court %}
+                            <li>{{ player }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endfor %}
+            <div class="rest-box">
+                <div class="court-title">Resting Players</div>
+                <ul>
+                    {% for player in resting_players %}
+                        <li>{{ player }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<audio id="beep-sound" src="{{ url_for('static', filename='beep.mp3') }}"></audio>
+
+<div id="custom-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 20px; border-radius: 10px; max-width: 400px; text-align: center;">
+        <h3 style="margin-top: 0;">Badminton Court Allocation Board</h3>
+        <p id="modal-message"></p>
+        <button onclick="closeModal()" style="margin-top: 15px; padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 5px;">OK</button>
+    </div>
+</div>
+<div id="confirm-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 20px; border-radius: 10px; max-width: 400px; text-align: center;">
+        <h3 style="margin-top: 0;">Badminton Court Allocation Board</h3>
+        <p id="confirm-message"></p>
+        <button id="confirm-yes" style="margin: 10px; padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 5px;">Yes</button>
+        <button id="confirm-no" style="margin: 10px; padding: 8px 16px; background-color: #dc3545; color: white; border: none; border-radius: 5px;">No</button>
+    </div>
+</div>
+
+
+<script>
+let timer = null;
+let remaining = 0;
+let isRunning = false;
+let inWaitMode = false;
+let currentPlayers = [];
+let numCourts = 2;
+let courtNumbers = []; // Stores court labels like ["7", "9", "10"]
+let shuttleCount = 0;
+
+
+function getMatchSettings() {
+    const matchMinutes = parseInt(document.getElementById('match_minutes')?.value) || 15;
+    const waitSeconds = parseInt(document.getElementById('wait_seconds')?.value) || 30;
+    return {
+        MATCH_DURATION: matchMinutes * 60,
+        WAIT_DURATION: waitSeconds
+    };
+}
+
+function updateTimerDisplay(message = null) {
+    if (message) {
+        document.getElementById('timer').textContent = message;
+        document.getElementById('progress').style.width = `100%`;
+        return;
+    }
+
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    document.getElementById('timer').textContent =
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    const { MATCH_DURATION } = getMatchSettings();
+    const percent = ((MATCH_DURATION - remaining) / MATCH_DURATION) * 100;
+    document.getElementById('progress').style.width = `${Math.min(percent, 100)}%`;
+}
+
+function startTimerCycle() {
+    if (isRunning || inWaitMode) return;
+
+    isRunning = true;
+    updateTimerDisplay();
+
+    timer = setInterval(async () => {
+        if (remaining > 0) {
+            remaining--;
+            updateTimerDisplay();
+        } else {
+            clearInterval(timer);
+            timer = null;
+            isRunning = false;
+
+            // Match time is up
+            document.getElementById('beep-sound').play();
+            updateTimerDisplay("⏰ Time's Up! Check new assignments below");
+
+            // Reassign courts immediately
+            await reassignCourts();
+
+            // Enter wait mode
+            inWaitMode = true;
+            const { WAIT_DURATION, MATCH_DURATION } = getMatchSettings();
+            setTimeout(() => {
+                remaining = MATCH_DURATION;
+                inWaitMode = false;
+                updateTimerDisplay();
+                startTimerCycle();
+            }, WAIT_DURATION * 1000);
+        }
+    }, 1000);
+}
+
+function startTimer() {
+    if (!isRunning && !inWaitMode) {
+        startTimerCycle();
+    }
+}
+
+function pauseTimer() {
+    clearInterval(timer);
+    timer = null;
+    isRunning = false;
+}
+
+function resetTimer() {
+    pauseTimer();
+    inWaitMode = false;
+    const { MATCH_DURATION } = getMatchSettings();
+    remaining = MATCH_DURATION;
+    updateTimerDisplay();
+}
+
+function incrementShuttle() {
+    shuttleCount++;
+    document.getElementById('shuttle_count').value = shuttleCount;
+}
+
+async function assignInitialCourts() {
+    currentPlayers = document.getElementById('players').value.split(',').map(p => p.trim()).filter(p => p);
+    const courtInput = document.getElementById('court_numbers').value;
+	courtNumbers = courtInput.split(',').map(c => c.trim()).filter(c => c);  // global assignment
+	const shuttle_count = parseInt(document.getElementById('shuttle_count')?.value) || 0;
+
+    const match_minutes = parseInt(document.getElementById('match_minutes')?.value) || 15;
+
+    const response = await fetch('/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+			players: currentPlayers, 
+			court_numbers: courtNumbers, 
+			match_minutes,
+			shuttle_count
+		})
+		
+    });
+
+    const data = await response.json();
+    renderCourtOutput(data);
+
+    pauseTimer();
+    inWaitMode = false;
+    remaining = getMatchSettings().MATCH_DURATION;
+    updateTimerDisplay();
+    startTimerCycle();
+}
+
+async function reassignCourts() {
+    const match_minutes = parseInt(document.getElementById('match_minutes')?.value) || 10;
+    const shuttle_count = parseInt(document.getElementById('shuttle_count')?.value) || 0;
+
+    // 🔄 Always refresh player list before reassignment
+    currentPlayers = document.getElementById('players').value.split(',').map(p => p.trim()).filter(p => p);
+
+    const response = await fetch('/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            players: currentPlayers, 
+            court_numbers: courtNumbers,
+            match_minutes,
+            shuttle_count
+        })
+    });
+
+    const data = await response.json();
+    renderCourtOutput(data);
+}
+
+
+function renderCourtOutput(data) {
+    const outputDiv = document.getElementById('courts-output');
+    let html = '';
+
+    data.court_assignments.forEach((court, i) => {
+		const label = data.court_labels && data.court_labels[i] ? data.court_labels[i] : `Court ${i + 1}`;
+		html += `<div class="court-box"><div class="court-title">${label}</div><ul>`;
+        court.forEach(player => html += `<li>${player}</li>`);
+        html += `</ul></div>`;
+    });
+
+    html += `<div class="rest-box"><div class="court-title">Resting Players</div><ul>`;
+    data.resting_players.forEach(player => html += `<li>${player}</li>`);
+    html += `</ul></div>`;
+
+    outputDiv.innerHTML = html;
+}
+
+function showModal(message) {
+    document.getElementById('modal-message').textContent = message;
+    document.getElementById('custom-modal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('custom-modal').style.display = 'none';
+}
+
+function confirmModal(message) {
+    return new Promise((resolve) => {
+        document.getElementById('confirm-message').textContent = message;
+        const modal = document.getElementById('confirm-modal');
+        modal.style.display = 'flex';
+
+        const yesBtn = document.getElementById('confirm-yes');
+        const noBtn = document.getElementById('confirm-no');
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            yesBtn.removeEventListener('click', yesHandler);
+            noBtn.removeEventListener('click', noHandler);
+        };
+
+        const yesHandler = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        const noHandler = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        yesBtn.addEventListener('click', yesHandler);
+        noBtn.addEventListener('click', noHandler);
+    });
+}
+	
+
+async function resetHistory() {
+    await fetch('/reset', { method: 'POST' });
+    showModal('Rest history and round count reset.');
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    updateTimerDisplay();
+    document.getElementById('assign-btn').addEventListener('click', assignInitialCourts);
+    document.getElementById('start-btn').addEventListener('click', startTimer);
+    document.getElementById('pause-btn').addEventListener('click', pauseTimer);
+    document.getElementById('reset-btn').addEventListener('click', resetTimer);
+});
+
+document.getElementById('reset-history-btn').addEventListener('click', async () => {
+    const confirmed = await confirmModal("Are you sure you want to reset match history and rest tracking?");
+    if (confirmed) {
+        await fetch('/reset', { method: 'POST' });
+        showModal('Reset successful!');
+    }
+});
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('show');
+}
+function openSettingsModal() {
+    document.getElementById('settings-modal').style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    document.getElementById('settings-modal').style.display = 'none';
+}
+
+function openPlayerModal() {
+    fetch('/get_players')
+        .then(res => res.json())
+        .then(data => {
+            const selectedPlayers = document.getElementById('players').value
+                .split(',')
+                .map(p => p.trim());
+
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+            data.players.forEach(player => {
+                const isChecked = selectedPlayers.includes(player);
+                const li = document.createElement('li');
+                li.innerHTML = `<label><input type="checkbox" value="${player}" ${isChecked ? 'checked' : ''}> ${player}</label>`;
+                list.appendChild(li);
+            });
+
+            document.getElementById('player-modal').style.display = 'flex';
+        });
+}
+
+
+function closePlayerModal() {
+    document.getElementById('player-modal').style.display = 'none';
+}
+
+function applyPlayerSelection() {
+    const selected = Array.from(document.querySelectorAll('#player-list input:checked')).map(el => el.value);
+    document.getElementById('players').value = selected.join(', ');
+    closePlayerModal();
+}
+
+
+</script>
+</body>
+</html>
